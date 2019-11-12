@@ -23,8 +23,6 @@ def convert_to_distance_matrix(similarity_matrix):
 #and a distance metric used to measure distance between clusters.
 # It outputs a dendrogram and the cophenetic correlation coefficient.
 def hierarchical_clustering(distance_matrix,method,gap,Tp,automatic,pp):
-    
-    
     #agglomerative clustering
     Z = linkage(distance_matrix, method)
     

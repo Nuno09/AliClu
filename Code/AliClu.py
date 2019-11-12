@@ -20,13 +20,14 @@ import itertools
 import numpy as np
 import string
 import argparse
+import time
 
 
 #np.random.seed(123)
 np.seterr(all='raise')
 
 if __name__ == '__main__':
-    
+    start = time.time()
     parser = argparse.ArgumentParser(description='AliClu')
     #positional arguments - filename, maximum number of clusters, automatic or not 
     parser.add_argument("filename",help='Input CSV file with temporal sequences for each patient')
@@ -141,7 +142,6 @@ if __name__ == '__main__':
         
         #pairwise sequence alignment results
         results = main_algorithm(df_encoded,gap,T,s,0)
-        
         #reset indexes
         df_encoded = df_encoded.reset_index()
         
@@ -155,7 +155,6 @@ if __name__ == '__main__':
         else:
             #hierarchical clustering
             Z = hierarchical_clustering(results['score'],method,gap,T,args.automatic,pp)
-
             #validation
             chosen = validation(M,df_encoded,results,Z,method,min_K,max_K+1,args.automatic,pp,gap,T)
             chosen_k = chosen[2]
@@ -165,7 +164,6 @@ if __name__ == '__main__':
             chosen_results = df_avgs.loc[chosen_k]
             chosen_results['gap'] = gap
             concat_for_final_decision.append(chosen_results)
-    
     ############################################################################
     #       RESULTS
     ############################################################################
@@ -227,3 +225,8 @@ if __name__ == '__main__':
     #CLUSTER VALIDATION AFTER FOUNDING K
     cluster_validation(M,method,k,partition_found,df_encoded,results,final_gap,T)
    
+
+end = time.time()
+
+elapsed = end - start
+print(elapsed)
