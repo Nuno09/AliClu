@@ -48,6 +48,12 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
         dicio_statistics[k]['cvnn'] = []
         dicio_statistics[k]['s_dbw'] = []
 
+        c_assignments_original = cut_tree(Z, k)
+
+        # list of clusters for the clustering result with the original data
+        partition_original = cluster_indices(c_assignments_original, df_encoded.index.tolist())
+        trees[k] = partition_original
+
     #for each bootstrap sample
     for i in range(M):
         # sampling rows of the original data
@@ -62,17 +68,15 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
         Z_bootstrap = linkage(results_bootstrap['score'],method)
 
         #for each number of clusters k=min_K,...,max_K
-        for k in range(min_K,max_K):
-            c_assignments_original = cut_tree(Z,k)
+        for k, partition in trees.items():
+
             c_assignments_bootstrap = cut_tree(Z_bootstrap,k)
-            #list of clusters for the clustering result with the original data
-            partition_original = cluster_indices(c_assignments_original,df_encoded.index.tolist())
             #list of clusters for the clustering result with the bootstrap sample
             partition_bootstrap = cluster_indices(c_assignments_bootstrap,idx)
             #compute 4 different cluster external indexes between the partitions
-            computed_indexes = cluster_external_index(partition_original,partition_bootstrap)
+            computed_indexes = cluster_external_index(partition,partition_bootstrap)
 
-            trees[k] = partition_original
+
 
             #print(computed_indexes)
             dicio_statistics[k]['rand'].append(computed_indexes[0])
