@@ -134,16 +134,14 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
     #found the maximum value for each clustering index and locate in which k it happens
     # compute the scores for each k as being the sum of weights whenever that k has maximums of clustering indices
     columns = df_avgs.columns
-    analyzed_columns = columns[2:-2]
+    analyzed_columns = columns[2:-3]
     for column in analyzed_columns:
         idx_max = df_avgs[column].idxmax()
         df_avgs.loc[idx_max]['k_score_avg'] = df_avgs.loc[idx_max]['k_score_avg'] + weights[column]
-    #idx_min_cvnn = df_avgs['cvnn'].idxmin()
     idx_min_s_dbw = df_avgs['s_dbw'].idxmin()
     idx_min_cvnn = df_avgs['cvnn'].idxmin()
     df_avgs.loc[idx_min_s_dbw]['k_score_avg'] = df_avgs.loc[idx_min_s_dbw]['k_score_avg'] + weights['s_dbw']
     df_avgs.loc[idx_min_cvnn]['k_score_avg'] = df_avgs.loc[idx_min_cvnn]['k_score_avg'] + weights['cvnn']
-    df_avgs['k_score_avg']
     #final number of clusters chosen by analysing df_avgs
     final_k = df_avgs['k_score_avg'].idxmax()
 
@@ -206,9 +204,15 @@ def final_decision(df_final_decision):
                    'Jaccard':1/6, 'Adjusted Wallace':1/6, 's_dbw':1/6, 'cvnn':1/6}
     #found the maximum value for each clustering index and locate in which k it happens
     # compute the scores for each k as being the sum of weights whenever that k has maximums of clustering indices
-    for column in df_final_decision.drop(columns = ['k','Rand','k_score_avg','gap']).columns:
+    for column in df_final_decision.drop(columns = ['k','Rand','s_dbw','cvnn','k_score_avg','gap']).columns:
         idx_max = df_final_decision[column].idxmax()
         df_aux.loc[idx_max]['k_score'] = df_aux.loc[idx_max]['k_score'] + weights[column]
+
+    idx_min_s_dbw = df_final_decision['s_dbw'].idxmin()
+    df_aux.loc[idx_min_s_dbw]['k_score'] = df_aux.loc[idx_min_s_dbw]['k_score'] + weights['s_dbw']
+    idx_min_cvnn = df_final_decision['cvnn'].idxmax()
+    df_aux.loc[idx_min_cvnn]['k_score'] = df_aux.loc[idx_min_cvnn]['k_score'] + weights['cvnn']
+
 
     #final number of clusters and best results
     final_k_results = df_final_decision.loc[df_aux['k_score'].idxmax()]

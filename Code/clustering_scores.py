@@ -8,7 +8,7 @@ Created on Tue Jan 30 11:26:07 2018
 
 import numpy as np
 import math
-import time
+import pandas as pd
 
 
 def cluster_indices(cluster_assignments,idx):
@@ -189,44 +189,43 @@ def S_Dbw(partition_a, results):
     return Scat(partition_dict, results) + Dens_bw(partition_dict, results)
 
 def Scat(d, results):
-    sum_stds = 0
+    sum_variance_vectors = 0
+    variance_vector_dataset = results[['score']].var(ddof=0)
+    variance_vector_dataset = variance_vector_dataset.to_numpy()
+
     for k, v in d.items():
-        if len(v) > 2:
-            scores_df = getCombination_Df(v, results)
-            std = scores_df[['score']].std().values[0]
-        else:
-            std = 0
-        sum_stds += std / results[['score']].std().values[0]
-    return sum_stds / len(d)
+        scores_df = getCombination_Df(v, results)
+        variance_vector = scores_df[['score']].var(ddof=0)
+        variance_vector = variance_vector.to_numpy()
+        sum_variance_vectors += math.sqrt(np.dot(np.transpose(variance_vector),variance_vector)) / \
+                                math.sqrt(np.dot(np.transpose(variance_vector_dataset),variance_vector_dataset))
+    return sum_variance_vectors / len(d)
 
 def Dens_bw(d, results):
     sum_density_combinations = 0
     for k,v in d.items():
         sum_density = 0
+        v_dict = {i: v[i] for i in range(len(v))}
+        for key, point in v_dict.items():
+            mean_points = getCombination_Df([point], results)
+            mean_points_dict = {point: mean_points['score'].mean()}
+        centeri = getCenter(v_dict,results)
         for k2, v2 in d.items():
             if k2 != k:
+                v2_dict = {j: v2[j] for j in range(len(v2))}
+                centerj = getCenter(v2_dict,results)
+
+                centeru = getPair(results, centeri, centerj)
+                final_u = getNearest(centeru['score'].values[0] / 2, mean_points_dict)
+
                 union_of_clusters = v + v2
                 union_of_clusters_df = getCombination_Df(sorted(union_of_clusters),results)
 
-                if len(v) > 1:
-                    cluster_i = getCombination_Df(v,results)
-                    center_i = cluster_i.iloc[[(cluster_i.shape[0]) - 1 / 2]].score.values[0]
-                else:
-                    center_i = 0
-
-                if len(v2) > 1:
-                    cluster_j = getCombination_Df(v2, results)
-                    center_j = cluster_j.iloc[[(cluster_j.shape[0]) - 1 / 2]].score.values[0]
-                else:
-                    center_j = 0
-
-
-                center_u = abs(center_i - center_j)/2
                 std_clusters = union_of_clusters_df['score'].std()
-                for index, row in union_of_clusters_df.iterrows():
-                    density_centers = max(calculate_density(row['score'], center_i, std_clusters), calculate_density(row['score'], center_j, std_clusters))
-                    if density_centers != 0:
-                        sum_density += calculate_density(row['score'],center_u,std_clusters) / density_centers
+                density_centers = max(calculate_density(centeri, union_of_clusters_df, std_clusters),
+                                      calculate_density(centerj, union_of_clusters_df, std_clusters))
+                if density_centers != 0:
+                    sum_density += calculate_density(final_u, union_of_clusters_df, std_clusters) / density_centers
         sum_density_combinations += sum_density
 
     return sum_density_combinations
@@ -234,14 +233,54 @@ def Dens_bw(d, results):
 def getCombination_Df(A,results):
     df_p1 = results[results['patient1'].isin(A)]
     df = df_p1[df_p1['patient2'].isin(A)]
+
     return df
 
-def calculate_density(x, u, std):
-    distance = abs(u - x)
+def calculate_density(center, union, std):
+    density = 0
+    distance_df = union.query('patient1 == ' + str(center) + ' and patient2 == ' + str(center))
+    for key, row in distance_df.iterrows():
+        density += function_f(row['score'], std)
+
+    return density
+
+def function_f(distance, std):
     if std - distance < 0:
         return 0
     else:
         return 1
+
+def getCenter(v, results):
+    min_distance = math.inf
+    for k, el1 in v.items():
+        dist_sum = 0
+        for k2, el2 in v.items():
+            if el2 > el1:
+                row = getPair(results, el1, el2)
+                dist_sum += row['score'].values[0]
+        if dist_sum < min_distance:
+            min_distance = dist_sum
+            center = el1
+    return center
+
+def getPair(results, el1, el2):
+    row = results.query('patient1 == ' + str(el1) + ' and patient2 == ' + str(el2))
+    if row.empty:
+        row = results.query('patient1 == ' + str(el2) + ' and patient2 == ' + str(el1))
+        if row.empty:
+            row = pd.DataFrame(np.array([math.inf]), columns=['score'])
+
+    return row
+
+def getNearest(score, mean_points):
+    closest = math.inf
+    final_u = 0
+    for k, v in mean_points.items():
+        distance = abs(score - v)
+        if distance < closest:
+            final_u = k
+
+    return final_u
 
 def cluster_validation_indexes(cluster_a,cluster_b):
     #jaccard index
