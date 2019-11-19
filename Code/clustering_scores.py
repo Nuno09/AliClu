@@ -224,8 +224,10 @@ def Dens_bw(d, results):
                 std_clusters = union_of_clusters_df['score'].std()
                 density_centers = max(calculate_density(centeri, union_of_clusters_df, std_clusters),
                                       calculate_density(centerj, union_of_clusters_df, std_clusters))
+
                 if density_centers != 0:
                     sum_density += calculate_density(final_u, union_of_clusters_df, std_clusters) / density_centers
+
         sum_density_combinations += sum_density
 
     return sum_density_combinations
@@ -238,7 +240,7 @@ def getCombination_Df(A,results):
 
 def calculate_density(center, union, std):
     density = 0
-    distance_df = union.query('patient1 == ' + str(center) + ' and patient2 == ' + str(center))
+    distance_df = union.query('patient1 == ' + str(center) + ' or patient2 == ' + str(center))
     for key, row in distance_df.iterrows():
         density += function_f(row['score'], std)
 
