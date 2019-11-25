@@ -45,9 +45,19 @@ def cluster_external_index(partition_a, partition_b):
     sum_C = np.sum(ct[R,0:C])
     #computing the number of pairs that are in the same cluster both in partition A and partition B
     a = 0
+    VD_i = 0
+    VD_j = 0
+    flag_columns = 0
     for i in range(0,R):
+        VD_i += max(ct[i,0:C])
         for j in range(0,C):
+            if flag_columns == 0:
+                VD_j += max(ct[0:R,j])
+
             a = a + ct[i][j]*(ct[i][j]-1)
+
+        flag_columns = 1
+
     a = a/2
     #computing the number of pair in the same cluster in partition A but in different cluster in partition B
     b = (sum_R_squared- sum_all_squared)/2
@@ -90,7 +100,10 @@ def cluster_external_index(partition_a, partition_b):
     else:
         adjusted_wallace = (wallace-(1-SID_B))/(1-(1-SID_B))
 
-    return [rand_index, adjusted_rand_index, FM, jaccard, adjusted_wallace]
+    #Van Dongen
+    van_dongen = (2*N - VD_i - VD_j) / 2*N
+
+    return [rand_index, adjusted_rand_index, FM, jaccard, adjusted_wallace, van_dongen]
 
 
 def adjusted_wallace(partition_a,partition_b):
