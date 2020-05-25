@@ -21,7 +21,6 @@ import itertools
     #CLUSTER VALIDATION (STABILITY)
     ##############################################################################
 def cluster_validation(M,method,k,partition_found,df_encoded,results,gap,Tp):
-    
     #write cluster stability analysis on a pdf page
     pp = PdfPages('cluster_stability_analysis.pdf')
     

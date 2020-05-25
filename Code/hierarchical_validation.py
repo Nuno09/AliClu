@@ -17,6 +17,22 @@ import numpy as np
 import itertools
 from collections import defaultdict
 
+import sys
+sys.path.insert(0, '/home/nuno/Documentos/IST/Tese/Clustereval')
+import clustereval
+indexes = ['Rand', 'Adjusted Rand', 'Fowlkes and Mallows', 'Jaccard', 'Adjusted Wallace', 'Van Dongen', 'Huberts',
+           'Huberts Normalized', 'F-Measure', 'VI', 'Minkowski', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'S', 'SD']
+
+external_indexes = ['Rand', 'Adjusted Rand', 'Fowlkes and Mallows', 'Jaccard', 'Adjusted Wallace', 'Van Dongen', 'Huberts',
+                   'Huberts Normalized', 'F-Measure', 'VI', 'Minkowski']
+
+internal_indexes = ['CVNN', 'XB**', 'S_Dbw', 'DB*', 'S', 'SD']
+
+min_indexes = ['Van Dongen', 'VI', 'Minkowski', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'SD']
+
+
+
+
 #Function that performs validation of hierarchical clustering as on the paper
 #'On validation of Hierarchical Clustering'
 #INPUT:
@@ -38,21 +54,18 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
     nn_history = defaultdict(dict)
     trees = defaultdict(dict)
     dicio_statistics = {k:{} for k in range(min_K,max_K)}
+
     for k in range(min_K,max_K):
-        dicio_statistics[k]['rand'] = []
-        dicio_statistics[k]['adjusted'] = []
-        dicio_statistics[k]['FM'] = []
-        dicio_statistics[k]['jaccard'] = []
-        dicio_statistics[k]['adjusted_wallace'] = []
-        dicio_statistics[k]['cvnn'] = []
-        dicio_statistics[k]['s_dbw'] = []
-        dicio_statistics[k]['van_dongen'] = []
+        for index in indexes:
+            dicio_statistics[k][index] = []
 
         c_assignments_original = cut_tree(Z, k)
 
         # list of clusters for the clustering result with the original data
         partition_original = cluster_indices(c_assignments_original, df_encoded.index.tolist())
+
         trees[k] = partition_original
+
 
     #for each bootstrap sample
     for i in range(M):
@@ -74,24 +87,19 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
             #list of clusters for the clustering result with the bootstrap sample
             partition_bootstrap = cluster_indices(c_assignments_bootstrap,idx)
             #compute 4 different cluster external indexes between the partitions
-            computed_indexes = cluster_external_index(partition,partition_bootstrap)
+            #computed_indexes = cluster_external_index(partition,partition_bootstrap)
+            computed_indexes = clustereval.calculate_external(partition, partition_bootstrap)
 
 
 
             #print(computed_indexes)
-            dicio_statistics[k]['rand'].append(computed_indexes[0])
-            dicio_statistics[k]['adjusted'].append(computed_indexes[1])
-            dicio_statistics[k]['FM'].append(computed_indexes[2])
-            dicio_statistics[k]['jaccard'].append(computed_indexes[3])
-            dicio_statistics[k]['adjusted_wallace'].append(computed_indexes[4])
-            dicio_statistics[k]['van_dongen'].append(computed_indexes[5])
-
+            for pos, index in enumerate(external_indexes):
+                dicio_statistics[k][index].append(computed_indexes[pos])
 
     for k, partition in trees.items():
-        cvnn_idx = CVNN(partition, results, k, nn_history)
-        s_dbw_idx = S_Dbw(partition, results)
-        dicio_statistics[k]['s_dbw'].append(s_dbw_idx)
-        dicio_statistics[k]['cvnn'].append(cvnn_idx)
+        calc_idx = clustereval.calculate_internal(results[['patient1', 'patient2', 'score']], partition, k, trees[max_K - 1])
+        for index in internal_indexes:
+            dicio_statistics[k][index].append(calc_idx[index])
     ###########################################################################
     #  DECISION ON THE NUMBER OF CLUSTERS
     # The correct number of clusters is the k that yield most maximum average values of
@@ -101,93 +109,114 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
     ###########################################################################
 
     #dataframe that stores the clustering indices averages for each k
-    df_avgs = pd.DataFrame(index = range(min_K,max_K),columns = ['k','Rand','Adjusted Rand','Fowlkes and Mallows','Jaccard','Adjusted Wallace', 'van_dongen','s_dbw','cvnn','k_score_avg'], dtype='float')
+    col = indexes.copy()
+    col.extend(['k', 'k_score_avg'])
+    df_avgs = pd.DataFrame(index = range(min_K,max_K),columns = col, dtype='float')
     #dataframe that stores the AR and AW indices standard deviations for each k
-    df_stds = pd.DataFrame(index = range(min_K,max_K),columns = ['k','Rand','Adjusted Rand','Fowlkes and Mallows','Jaccard','Adjusted Wallace', 'van_dongen', 's_dbw','cvnn'],dtype = 'float')
+    df_stds = pd.DataFrame(index = range(min_K,max_K),columns = col, dtype = 'float')
 
     #computing the means and standard deviations
     for k in range(min_K,max_K):
         df_avgs.loc[k]['k'] = k
-        df_avgs.loc[k]['Rand'] = mean(dicio_statistics[k]['rand'])
-        df_avgs.loc[k]['Adjusted Rand'] = mean(dicio_statistics[k]['adjusted'])
-        df_avgs.loc[k]['Fowlkes and Mallows']= mean(dicio_statistics[k]['FM'])
-        df_avgs.loc[k]['Jaccard']= mean(dicio_statistics[k]['jaccard'])
-        df_avgs.loc[k]['Adjusted Wallace'] = mean(dicio_statistics[k]['adjusted_wallace'])
-        df_avgs.loc[k]['van_dongen'] = mean(dicio_statistics[k]['van_dongen'])
-        df_avgs.loc[k]['cvnn'] = dicio_statistics[k]['cvnn'][0]
-        df_avgs.loc[k]['s_dbw'] = dicio_statistics[k]['s_dbw'][0]
-        df_avgs.loc[k]['k_score_avg'] = 0
-
         df_stds.loc[k]['k'] = k
-        df_stds.loc[k]['Rand'] = stdev(dicio_statistics[k]['rand'])
-        df_stds.loc[k]['Adjusted Rand'] = stdev(dicio_statistics[k]['adjusted'])
-        df_stds.loc[k]['Fowlkes and Mallows']  =stdev(dicio_statistics[k]['FM'])
-        df_stds.loc[k]['Jaccard'] = stdev(dicio_statistics[k]['jaccard'])
-        df_stds.loc[k]['Adjusted Wallace'] = stdev(dicio_statistics[k]['adjusted_wallace'])
-        df_stds.loc[k]['van_dongen'] = stdev(dicio_statistics[k]['van_dongen'])
-        df_stds.loc[k]['cvnn'] = dicio_statistics[k]['cvnn'][0]
-        df_stds.loc[k]['s_dbw'] = dicio_statistics[k]['s_dbw'][0]
+        for index in indexes:
+            if index not in internal_indexes:
+                df_avgs.loc[k][index] = mean(dicio_statistics[k][index])
+                df_stds.loc[k][index] = stdev(dicio_statistics[k][index])
+            else:
+                df_avgs.loc[k][index] = dicio_statistics[k][index][0]
+                df_stds.loc[k][index] = dicio_statistics[k][index][0]
 
-        #df_stds.loc[k]['k_score_std'] = 0
+        df_avgs.loc[k]['k_score_avg'] = 0
+        df_stds.loc[k]['k_score_std'] = 0
+
         #df_stds.loc[k]['k_score_std_2'] = 0
 
     #weights given to each clustering indice, Rand Index does not value as much as the other indices
-    weights = {'Adjusted Rand': 1/7, 'Fowlkes and Mallows': 1/7,
-                   'Jaccard':1/7, 'Adjusted Wallace':1/7, 'van_dongen':1/7, 's_dbw':1/7, 'cvnn':1/7}
+    weights = {index: 1/len(indexes) for index in indexes}
     #found the maximum value for each clustering index and locate in which k it happens
     # compute the scores for each k as being the sum of weights whenever that k has maximums of clustering indices
     columns = df_avgs.columns
     analyzed_columns = columns[2:-3]
     for column in analyzed_columns:
+
+        if column in min_indexes:
+            idx_min = df_avgs[column].idxmin()
+            df_avgs.loc[idx_min]['k_score_avg'] = df_avgs.loc[idx_min]['k_score_avg'] + weights[column]
+            continue
+
+
         idx_max = df_avgs[column].idxmax()
         df_avgs.loc[idx_max]['k_score_avg'] = df_avgs.loc[idx_max]['k_score_avg'] + weights[column]
-    idx_min_s_dbw = df_avgs['s_dbw'].idxmin()
-    idx_min_cvnn = df_avgs['cvnn'].idxmin()
-    df_avgs.loc[idx_min_s_dbw]['k_score_avg'] = df_avgs.loc[idx_min_s_dbw]['k_score_avg'] + weights['s_dbw']
-    df_avgs.loc[idx_min_cvnn]['k_score_avg'] = df_avgs.loc[idx_min_cvnn]['k_score_avg'] + weights['cvnn']
+
+    #idx_min_s_dbw = df_avgs['s_dbw'].idxmin()
+    #idx_min_cvnn = df_avgs['cvnn'].idxmin()
+    #df_avgs.loc[idx_min_s_dbw]['k_score_avg'] = df_avgs.loc[idx_min_s_dbw]['k_score_avg'] + weights['s_dbw']
+    #df_avgs.loc[idx_min_cvnn]['k_score_avg'] = df_avgs.loc[idx_min_cvnn]['k_score_avg'] + weights['cvnn']
+
     #final number of clusters chosen by analysing df_avgs
     final_k = df_avgs['k_score_avg'].idxmax()
 
 
-    if(automatic==0 or automatic==1):      
+    if(automatic==0 or automatic==1):
 
-        fig = plt.figure(figsize=(10,5))
+        fig1 = plt.figure(figsize=(10,5))
         ax = plt.gca()
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
         ax.axis('tight')
         ax.axis('off')
-        colLabels=df_avgs.loc[:, df_avgs.columns != 'k_score_avg'].columns
-        cell_text = []
+        #colLabels=df_avgs.loc[:, df_avgs.columns != 'k_score_avg'].columns
+        colLabels1 = external_indexes.copy()
+        colLabels1.append('k')
+        cell_text1 = []
         for row in range(len(df_avgs)):
-            cell_text.append(df_avgs.iloc[row,0:-1].round(decimals=3))
-        plt.title('Average values of five clustering indices \n gap: %.2f, Tp: %.2f, %s link' %(gap,Tp,method))
-        plt.table(cellText=cell_text, colLabels=colLabels, loc='center',cellLoc='center',fontsize=20)
-        pp.savefig(fig)
-        
-    
+            cell_text1.append(df_avgs.iloc[row,list(range(len(external_indexes))) + [-2]].round(decimals=3))
+        plt.title('Average values of eleven external indices \n gap: %.2f, Tp: %.2f, %s link' %(gap,Tp,method))
+        plt.table(cellText=cell_text1, colLabels=colLabels1, loc='center',cellLoc='center',fontsize=20)
+        pp.savefig(fig1)
+
+
+
+        fig2 = plt.figure(3, figsize=(12, 7))
+        ax = plt.gca()
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+        ax.axis('tight')
+        ax.axis('off')
+        # colLabels=df_avgs.loc[:, df_avgs.columns != 'k_score_avg'].columns
+        colLabels2 = internal_indexes.copy()
+        colLabels2.append('k')
+        cell_text2 = []
+        for row in range(len(df_avgs)):
+            cell_text2.append(df_avgs.iloc[row, list(range(len(external_indexes), len(indexes))) + [-2]].round(decimals=3))
+        plt.title('Average values of six internal indices \n gap: %.2f, Tp: %.2f, %s link' % (gap, Tp, method))
+        plt.table(cellText=cell_text2, colLabels=colLabels2, loc='center', cellLoc='center', fontsize=20)
+        pp.savefig(fig2)
+
+
         #bar chart of standard deviation - standard deviation of all measures
         # Create a figure instance
     #    plt.figure(2)
     #    df_stds.loc[:,df_stds.columns != 'k'].plot.bar(figsize=(15,8))
     #    plt.title('Standard deviation of five measures versus number of clusters',fontsize=25)
-    #    plt.xlabel('Number of clusters',labelpad=20,fontsize=20)    
-    #    plt.ylabel('Standard deviation',labelpad=10,fontsize=20)    
+    #    plt.xlabel('Number of clusters',labelpad=20,fontsize=20)
+    #    plt.ylabel('Standard deviation',labelpad=10,fontsize=20)
     #    plt.xticks(size = 20)
     #    plt.yticks(size = 20)
     #    plt.show()
-        
-        
-        fig1 = plt.figure(3)
+
+
+        fig3 = plt.figure(4)
         df_stds.loc[:,'Adjusted Rand'].plot.bar(figsize=(15,8),color='forestgreen')
         plt.title('Standard deviation of Adjusted Rand versus number of clusters \n gap: %.2f, Tp: %.2f, %s link' %(gap,Tp,method),fontsize=25)
-        plt.xlabel('Number of clusters',labelpad=20,fontsize=15)    
-        plt.ylabel('Standard deviation',labelpad=10,fontsize=15)    
+        plt.xlabel('Number of clusters',labelpad=20,fontsize=15)
+        plt.ylabel('Standard deviation',labelpad=10,fontsize=15)
         plt.xticks(size = 20)
         plt.yticks(size = 20)
         #plt.show()
-    
-        pp.savefig(fig1)
+
+        pp.savefig(fig3)
 
 
     return [df_avgs,df_stds,final_k]
@@ -203,18 +232,21 @@ def final_decision(df_final_decision):
     df_aux = pd.DataFrame(0,index = range(0,len(df_final_decision)),columns = ['k_score'],dtype = 'float')
     df_final_decision = df_final_decision.reset_index(drop = 'True')
     #weights given to each clustering indice, Rand Index does not value as much as the other indices
-    weights = {'Adjusted Rand': 1/7, 'Fowlkes and Mallows': 1/7,
-                   'Jaccard':1/7, 'Adjusted Wallace':1/7, 'van_dongen':1/7, 's_dbw':1/7, 'cvnn':1/7}
+    weights = {index: 1/len(indexes) for index in indexes}
     #found the maximum value for each clustering index and locate in which k it happens
     # compute the scores for each k as being the sum of weights whenever that k has maximums of clustering indices
-    for column in df_final_decision.drop(columns = ['k','Rand','s_dbw','cvnn','k_score_avg','gap']).columns:
+    for column in df_final_decision.drop(columns = ['k','Rand','k_score_avg','gap']).columns:
+        if column in min_indexes:
+            idx_min = df_final_decision[column].idxmin()
+            df_aux.loc[idx_min]['k_score'] = df_aux.loc[idx_min]['k_score'] + weights[column]
+            continue
         idx_max = df_final_decision[column].idxmax()
         df_aux.loc[idx_max]['k_score'] = df_aux.loc[idx_max]['k_score'] + weights[column]
 
-    idx_min_s_dbw = df_final_decision['s_dbw'].idxmin()
-    df_aux.loc[idx_min_s_dbw]['k_score'] = df_aux.loc[idx_min_s_dbw]['k_score'] + weights['s_dbw']
-    idx_min_cvnn = df_final_decision['cvnn'].idxmax()
-    df_aux.loc[idx_min_cvnn]['k_score'] = df_aux.loc[idx_min_cvnn]['k_score'] + weights['cvnn']
+    #idx_min_s_dbw = df_final_decision['s_dbw'].idxmin()
+    #df_aux.loc[idx_min_s_dbw]['k_score'] = df_aux.loc[idx_min_s_dbw]['k_score'] + weights['s_dbw']
+    #idx_min_cvnn = df_final_decision['cvnn'].idxmax()
+    #df_aux.loc[idx_min_cvnn]['k_score'] = df_aux.loc[idx_min_cvnn]['k_score'] + weights['cvnn']
 
 
     #final number of clusters and best results

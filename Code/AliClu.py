@@ -7,6 +7,9 @@ Created on Tue May 29 17:23:23 2018
 
 # Implementation of AliClu
 
+
+
+
 from matplotlib.backends.backend_pdf import PdfPages
 from sequence_alignment import main_algorithm
 from clustering import convert_to_distance_matrix, hierarchical_clustering
@@ -20,14 +23,14 @@ import itertools
 import numpy as np
 import string
 import argparse
-import time
+
+
 
 
 #np.random.seed(123)
 np.seterr(all='raise')
 
 if __name__ == '__main__':
-    start = time.time()
     parser = argparse.ArgumentParser(description='AliClu')
     #positional arguments - filename, maximum number of clusters, automatic or not 
     parser.add_argument("filename",help='Input CSV file with temporal sequences for each patient')
@@ -202,16 +205,13 @@ if __name__ == '__main__':
     
     #perform alignment with the chosen gap
     results = main_algorithm(df_encoded,final_gap,T,s,0)
-    
     #convert similarity matrix into distance matrix
     results['score'] = convert_to_distance_matrix(results['score'])
-    
     #hierarchical clustering
     Z = hierarchical_clustering(results['score'],method,gap,T,-1,0)
-    
     #reset indexes
     df_encoded = df_encoded.reset_index()
-    
+
     #PRINT CLUSTERS
     #cut the final dendrogram
     c_assignments_found = cut_tree(Z,k)
@@ -225,8 +225,3 @@ if __name__ == '__main__':
     #CLUSTER VALIDATION AFTER FOUNDING K
     cluster_validation(M,method,k,partition_found,df_encoded,results,final_gap,T)
    
-
-end = time.time()
-
-elapsed = end - start
-print(elapsed)

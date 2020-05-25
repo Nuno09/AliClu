@@ -101,7 +101,9 @@ def cluster_external_index(partition_a, partition_b):
         adjusted_wallace = (wallace-(1-SID_B))/(1-(1-SID_B))
 
     #Van Dongen
-    van_dongen = (2*N - VD_i - VD_j) / 2*N
+    van_dongen = (2*N - VD_i - VD_j)
+
+
 
     return [rand_index, adjusted_rand_index, FM, jaccard, adjusted_wallace, van_dongen]
 
@@ -174,8 +176,10 @@ def CVNN(partition_a, results, k, nn_history):
         df_distance = results.query('patient1 == ' + str(cluster) + ' and patient2 == ' + str(cluster))
         distance_sum+=df_distance['score'].sum()
 
-        separation_arr.append(separation_sum / len(cluster))
-        compactness_sum += (2*distance_sum + 1) / (len(cluster)*(len(cluster) - 1) + 1)
+        #centroid method producing empty cluster???(fix is down)
+        if (len(cluster) > 0):
+            separation_arr.append(separation_sum / len(cluster))
+            compactness_sum += (2*distance_sum + 1) / (len(cluster)*(len(cluster) - 1) + 1)
         separation_sum = 0
         distance_sum = 0
 
@@ -207,6 +211,10 @@ def Scat(d, results):
     variance_vector_dataset = variance_vector_dataset.to_numpy()
 
     for k, v in d.items():
+
+        #can be empty cluster or cluster with one element
+        if len(v) < 2:
+            continue
         scores_df = getCombination_Df(v, results)
         variance_vector = scores_df[['score']].var(ddof=0)
         variance_vector = variance_vector.to_numpy()
@@ -219,11 +227,17 @@ def Dens_bw(d, results):
     for k,v in d.items():
         sum_density = 0
         v_dict = {i: v[i] for i in range(len(v))}
+
+        #centroid method creating empty clusters
+        if not v_dict:
+            continue
         for key, point in v_dict.items():
             mean_points = getCombination_Df([point], results)
             mean_points_dict = {point: mean_points['score'].mean()}
         centeri = getCenter(v_dict,results)
         for k2, v2 in d.items():
+            if len(v2) == 0:
+                continue
             if k2 != k:
                 v2_dict = {j: v2[j] for j in range(len(v2))}
                 centerj = getCenter(v2_dict,results)
@@ -297,12 +311,14 @@ def getNearest(score, mean_points):
 
     return final_u
 
+
+
+
 def cluster_validation_indexes(cluster_a,cluster_b):
     #jaccard index
     num_jaccard = len(set(cluster_a).intersection(cluster_b))
     den_jaccard = len(set(cluster_a).union(cluster_b))
     jaccard = num_jaccard/den_jaccard
-    
     #the asymmetric measure gama - rate of recovery
     gama = num_jaccard/len(cluster_a)
     
