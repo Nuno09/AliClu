@@ -47,4 +47,32 @@ def print_clusters_csv(k,partition_found,df_encoded,directory):
         
     for c in range(0,k):
         cluster_name = 'Cluster '+ str(c+1) + ' - ' + str(len(partition_found[c])) + ' elements.csv'
+        print_nodes(df_encoded, partition_found[c], directory, c)
         df_encoded.loc[partition_found[c]].to_csv(directory+cluster_name,encoding='utf-8', index=False)
+
+def print_nodes(df_encoded, partition_found, directory, c):
+    from graphviz import Digraph
+    df = df_encoded.loc[partition_found][['aux_encode']]
+    dot = Digraph('G', filename='nodes.gv')
+    dot.attr(rankdir='LR', size='8,5')
+
+    sequence = []
+    time = []
+    for index, row in df.iterrows():
+        r = row[0].split(",")
+        r[0] = r[0].split(".")[1]
+        sequence.append(r[0])
+        for seq in r[1:]:
+            node = seq.rpartition(".")
+            sequence.append(node[-1])
+            time.append(node[0])
+        for i in range(len(sequence) - 1):
+            node1 = sequence[i]
+            node2 = sequence[i+1]
+            dot.node(node1)
+            dot.node(node2)
+            dot.edge(node1, node2, label=time[i])
+        sequence = []
+        time = []
+
+    dot.render(directory + '/sequence_cluster ' + str(c+1) + '.gv', view=False)

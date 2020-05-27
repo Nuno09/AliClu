@@ -19,16 +19,16 @@ from collections import defaultdict
 
 import sys
 sys.path.insert(0, '/home/nuno/Documentos/IST/Tese/Clustereval')
+sys.path.insert(0, 'C:\\Users\\Nuno\\Documents\\IST\\TESE\\ValidClust')
 import clustereval
-indexes = ['Rand', 'Adjusted Rand', 'Fowlkes and Mallows', 'Jaccard', 'Adjusted Wallace', 'Van Dongen', 'Huberts',
-           'Huberts Normalized', 'F-Measure', 'VI', 'Minkowski', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'S', 'SD']
+indexes = ['R', 'AR', 'FM', 'J', 'AW', 'VD', 'H',
+           'H\'', 'F', 'VI', 'MS', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'S', 'SD']
 
-external_indexes = ['Rand', 'Adjusted Rand', 'Fowlkes and Mallows', 'Jaccard', 'Adjusted Wallace', 'Van Dongen', 'Huberts',
-                   'Huberts Normalized', 'F-Measure', 'VI', 'Minkowski']
+external_indexes = ['R', 'AR', 'FM', 'J', 'AW', 'VD', 'H', 'H\'', 'F', 'VI', 'MS']
 
 internal_indexes = ['CVNN', 'XB**', 'S_Dbw', 'DB*', 'S', 'SD']
 
-min_indexes = ['Van Dongen', 'VI', 'Minkowski', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'SD']
+min_indexes = ['VD', 'VI', 'MS', 'CVNN', 'XB**', 'S_Dbw', 'DB*', 'SD']
 
 
 
@@ -173,12 +173,17 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
         for row in range(len(df_avgs)):
             cell_text1.append(df_avgs.iloc[row,list(range(len(external_indexes))) + [-2]].round(decimals=3))
         plt.title('Average values of eleven external indices \n gap: %.2f, Tp: %.2f, %s link' %(gap,Tp,method))
-        plt.table(cellText=cell_text1, colLabels=colLabels1, loc='center',cellLoc='center',fontsize=20)
+        the_table = plt.table(cellText=cell_text1, colLabels=colLabels1, loc='center',cellLoc='center')
+        #the_table.auto_set_font_size(False)
+        #the_table.set_fontsize(4)
+        fig1.text(0.1, 0.01, "R = Rand, AR = Adjusted Rand, FM = Fowlkes and Mallows, J = Jaccard, AW = Adjusted Wallace, "
+                      "VD = Van Dongen, H = Huberts, H' = Huberts Normalized, F = F-Measure, "
+                      "VI = Variation of information, MS = Minkowski", fontsize=5)
         pp.savefig(fig1)
 
 
 
-        fig2 = plt.figure(3, figsize=(12, 7))
+        fig2 = plt.figure(3, figsize=(10, 5))
         ax = plt.gca()
         ax.xaxis.set_visible(False)
         ax.yaxis.set_visible(False)
@@ -208,7 +213,7 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
 
 
         fig3 = plt.figure(4)
-        df_stds.loc[:,'Adjusted Rand'].plot.bar(figsize=(15,8),color='forestgreen')
+        df_stds.loc[:,'AR'].plot.bar(figsize=(15,8),color='forestgreen')
         plt.title('Standard deviation of Adjusted Rand versus number of clusters \n gap: %.2f, Tp: %.2f, %s link' %(gap,Tp,method),fontsize=25)
         plt.xlabel('Number of clusters',labelpad=20,fontsize=15)
         plt.ylabel('Standard deviation',labelpad=10,fontsize=15)
@@ -235,7 +240,7 @@ def final_decision(df_final_decision):
     weights = {index: 1/len(indexes) for index in indexes}
     #found the maximum value for each clustering index and locate in which k it happens
     # compute the scores for each k as being the sum of weights whenever that k has maximums of clustering indices
-    for column in df_final_decision.drop(columns = ['k','Rand','k_score_avg','gap']).columns:
+    for column in df_final_decision.drop(columns = ['k','R','k_score_avg','gap']).columns:
         if column in min_indexes:
             idx_min = df_final_decision[column].idxmin()
             df_aux.loc[idx_min]['k_score'] = df_aux.loc[idx_min]['k_score'] + weights[column]
