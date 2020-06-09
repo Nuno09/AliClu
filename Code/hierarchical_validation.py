@@ -10,7 +10,7 @@ Created on Tue Jan 30 10:56:45 2018
 from matplotlib import pyplot as plt
 from scipy.cluster.hierarchy import cut_tree
 from fastcluster import linkage
-from clustering_scores import cluster_indices, cluster_external_index, CVNN,S_Dbw
+from clustering_scores import cluster_indices, cluster_external_index
 from statistics import mean, stdev
 import pandas as pd
 import numpy as np
@@ -60,10 +60,8 @@ def validation(M,df_encoded,results,Z,method,min_K,max_K,automatic,pp,gap,Tp):
             dicio_statistics[k][index] = []
 
         c_assignments_original = cut_tree(Z, k)
-
         # list of clusters for the clustering result with the original data
         partition_original = cluster_indices(c_assignments_original, df_encoded.index.tolist())
-
         trees[k] = partition_original
 
 

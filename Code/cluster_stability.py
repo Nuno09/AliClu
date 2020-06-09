@@ -44,10 +44,10 @@ def cluster_validation(M,method,k,partition_found,df_encoded,results,gap,Tp):
         results_bootstrap = pd.merge(results, patient_comb_bootstrap, how='inner', on=['patient1','patient2'])
         # Hierarchical Clustering of the bootstrap sample
         Z_bootstrap = linkage(results_bootstrap['score'],method)
-        
         c_assignments_bootstrap = cut_tree(Z_bootstrap,k)
         partition_bootstrap = cluster_indices(c_assignments_bootstrap,idx)
-        
+        if len(partition_bootstrap) != len(partition_found):
+            continue
         for k_i in range(1,k+1):
             aux_jaccard = []
             aux_dice = []

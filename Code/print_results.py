@@ -44,7 +44,6 @@ def print_clusters_csv(k,partition_found,df_encoded,directory):
             os.makedirs('./'+directory)
     except OSError:
         print ('Error: Creating directory. ' +  './'+directory)
-        
     for c in range(0,k):
         cluster_name = 'Cluster '+ str(c+1) + ' - ' + str(len(partition_found[c])) + ' elements.csv'
         print_nodes(df_encoded, partition_found[c], directory, c)

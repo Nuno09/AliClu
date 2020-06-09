@@ -213,7 +213,7 @@ if __name__ == '__main__':
     df_encoded = df_encoded.reset_index()
 
     #PRINT CLUSTERS
-    #cut the final dendrogram
+    #cut the final dendrogram-
     c_assignments_found = cut_tree(Z,k)
     #obtain the final partitions
     partition_found = cluster_indices(c_assignments_found,df_encoded.index.tolist())
